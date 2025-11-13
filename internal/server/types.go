@@ -13,6 +13,9 @@ type TemplateParam struct {
 	HasReadme        bool
 	DirectoryName    string
 	Files            []FileInfo
+	FileTree         []FileTreeItem
+	CurrentPath      string
+	ParentPath       string
 }
 
 type Param struct {
@@ -50,4 +53,11 @@ type FileInfo struct {
 	Name  string
 	Path  string
 	Depth int
+}
+
+type FileTreeItem struct {
+	Name     string
+	Path     string
+	IsDir    bool
+	Children []FileTreeItem
 }

@@ -202,3 +202,43 @@ func ListMarkdownFiles(dir string, extensions []string) ([]string, error) {
 
 	return files, nil
 }
+
+// ListDirectoryContents lists only the immediate contents (files and directories) of a directory
+func ListDirectoryContents(dir string, extensions []string) (files []string, dirs []string, err error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error reading directory: %w", err)
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs = append(dirs, entry.Name())
+		} else {
+			// Check if file has one of the specified extensions (case-insensitive)
+			ext := strings.ToLower(filepath.Ext(entry.Name()))
+			for _, validExt := range extensions {
+				if ext == validExt {
+					files = append(files, entry.Name())
+					break
+				}
+			}
+		}
+	}
+
+	// Sort alphabetically
+	sort.Strings(files)
+	sort.Strings(dirs)
+
+	return files, dirs, nil
+}
+
+// HasAllowedExtension checks if a file path has one of the allowed extensions
+func HasAllowedExtension(filePath string, extensions []string) bool {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	for _, validExt := range extensions {
+		if ext == validExt {
+			return true
+		}
+	}
+	return false
+}
