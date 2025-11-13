@@ -36,6 +36,8 @@ func init() {
 	rootCmd.Flags().BoolP("verbose", "", false, "show verbose output")
 	rootCmd.Flags().BoolP("light-mode", "", false, "force light mode")
 	rootCmd.Flags().BoolP("dark-mode", "", false, "force dark mode")
+	rootCmd.Flags().BoolP("directory-listing", "", false, "enable directory browsing mode")
+	rootCmd.Flags().StringP("directory-listing-extensions", "", ".md", "file extensions to show in directory listing (comma-separated)")
 }
 
 func detectStdin(filename string) (bool, string) {
@@ -88,15 +90,20 @@ func run(cmd *cobra.Command, args []string) {
 	// Detect stdin usage
 	useStdin, stdinContent := detectStdin(filename)
 
+	directoryListing := utils.Must(flags.GetBool("directory-listing"))
+	directoryListingExtensions := utils.Must(flags.GetString("directory-listing-extensions"))
+
 	param := &server.Param{
-		Filename:       filename,
-		MarkdownMode:   markdownMode,
-		Reload:         !disableReload,
-		ForceLightMode: forceLightMode,
-		ForceDarkMode:  forceDarkMode,
-		AutoOpen:       !disableAutoOpen,
-		UseStdin:       useStdin,
-		StdinContent:   stdinContent,
+		Filename:                   filename,
+		MarkdownMode:               markdownMode,
+		Reload:                     !disableReload,
+		ForceLightMode:             forceLightMode,
+		ForceDarkMode:              forceDarkMode,
+		AutoOpen:                   !disableAutoOpen,
+		UseStdin:                   useStdin,
+		StdinContent:               stdinContent,
+		DirectoryListing:           directoryListing,
+		DirectoryListingExtensions: directoryListingExtensions,
 	}
 
 	err := httpServer.Serve(param)

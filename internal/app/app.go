@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"strings"
 
 	chromahtml "github.com/alecthomas/chroma/v2/formatters/html"
 	"github.com/thiagokokada/gh-gfm-preview/internal/utils"
@@ -42,7 +44,7 @@ func TargetFile(filename string) (string, error) {
 
 	info, err := os.Stat(filename)
 	if err == nil && info.IsDir() {
-		readme, err := findReadme(filename)
+		readme, err := FindReadme(filename)
 		if err != nil {
 			return "", err
 		}
@@ -112,7 +114,8 @@ func Slurp(fileName string) (string, error) {
 	return text, nil
 }
 
-func findReadme(dir string) (string, error) {
+// FindReadme finds a README file in the specified directory
+func FindReadme(dir string) (string, error) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		// Not returning since read dir will return the files
@@ -130,4 +133,72 @@ func findReadme(dir string) (string, error) {
 	err = fmt.Errorf("%w: README file in %s directory", ErrFileNotFound, dir)
 
 	return "", err
+}
+
+// ParseExtensions parses a comma-separated string of file extensions
+func ParseExtensions(extensionsStr string) []string {
+	if extensionsStr == "" {
+		return []string{".md"}
+	}
+
+	parts := strings.Split(extensionsStr, ",")
+	extensions := make([]string, 0, len(parts))
+
+	for _, ext := range parts {
+		ext = strings.TrimSpace(ext)
+		if ext == "" {
+			continue
+		}
+		// Add leading dot if not present
+		if !strings.HasPrefix(ext, ".") {
+			ext = "." + ext
+		}
+		extensions = append(extensions, strings.ToLower(ext))
+	}
+
+	if len(extensions) == 0 {
+		return []string{".md"}
+	}
+
+	return extensions
+}
+
+// ListMarkdownFiles recursively lists files with specified extensions in a directory
+func ListMarkdownFiles(dir string, extensions []string) ([]string, error) {
+	var files []string
+
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		// Check if file has one of the specified extensions (case-insensitive)
+		ext := strings.ToLower(filepath.Ext(path))
+		for _, validExt := range extensions {
+			if ext == validExt {
+				// Get relative path from dir
+				relPath, err := filepath.Rel(dir, path)
+				if err != nil {
+					return err
+				}
+				files = append(files, relPath)
+				break
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("error walking directory: %w", err)
+	}
+
+	// Sort files alphabetically
+	sort.Strings(files)
+
+	return files, nil
 }

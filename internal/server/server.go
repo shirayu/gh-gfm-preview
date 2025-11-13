@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"text/template"
@@ -38,16 +39,54 @@ func (server *Server) Serve(param *Param) error {
 	}
 
 	filename := ""
+	dir := ""
 
 	var err error
 	if !param.UseStdin {
-		filename, err = app.TargetFile(param.Filename)
-		if err != nil {
-			return fmt.Errorf("target file error: %w", err)
+		// Check if filename is a directory
+		inputPath := param.Filename
+		if inputPath == "" {
+			inputPath = "."
 		}
-	}
 
-	dir := filepath.Dir(filename)
+		info, statErr := os.Stat(inputPath)
+		isDir := statErr == nil && info.IsDir()
+
+		if isDir && param.DirectoryListing {
+			// Directory listing mode
+			param.IsDirectoryMode = true
+			param.DirectoryPath = inputPath
+			dir = inputPath
+
+			// Try to find README
+			readme, readmeErr := app.FindReadme(inputPath)
+			if readmeErr == nil {
+				param.ReadmeFile = readme
+				filename = readme
+			} else {
+				// No README found, will show directory listing
+				filename = ""
+			}
+		} else {
+			// Regular file mode
+			filename, err = app.TargetFile(param.Filename)
+			if err != nil {
+				if param.DirectoryListing && errors.Is(err, app.ErrFileNotFound) {
+					// README not found but directory listing is enabled
+					param.IsDirectoryMode = true
+					param.DirectoryPath = inputPath
+					dir = inputPath
+					filename = ""
+				} else {
+					return fmt.Errorf("target file error: %w", err)
+				}
+			} else {
+				dir = filepath.Dir(filename)
+			}
+		}
+	} else {
+		dir = "."
+	}
 
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/", wrapHandler(handler(filename, param, http.FileServer(http.Dir(dir)))))
@@ -98,26 +137,147 @@ func (server *Server) Serve(param *Param) error {
 
 func handler(filename string, param *Param, h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasSuffix(r.URL.Path, ".md") && r.URL.Path != "/" {
-			h.ServeHTTP(w, r)
+		// Check for view query parameter
+		viewMode := r.URL.Query().Get("view")
 
+		// Handle directory index view
+		if param.IsDirectoryMode && r.URL.Path == "/" && viewMode == "index" {
+			// Generate file list
+			extensions := app.ParseExtensions(param.DirectoryListingExtensions)
+			files, err := app.ListMarkdownFiles(param.DirectoryPath, extensions)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Error listing files: %v", err), http.StatusInternalServerError)
+				return
+			}
+
+			templateParam := TemplateParam{
+				Title:            "Browse Files",
+				Body:             "",
+				Host:             r.Host,
+				Reload:           param.Reload,
+				Mode:             param.getMode().String(),
+				ShowBrowseButton: false,
+				IsDirectoryIndex: true,
+				HasReadme:        param.ReadmeFile != "",
+				DirectoryName:    filepath.Base(param.DirectoryPath),
+				Files:            generateDirectoryIndex(files),
+			}
+
+			err = tmpl.Execute(w, templateParam)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			return
 		}
 
-		param := TemplateParam{
-			Title:  getTitle(filename),
-			Body:   mdResponse(w, filename, param),
-			Host:   r.Host,
-			Reload: param.Reload,
-			Mode:   param.getMode().String(),
-		}
+		// Handle README display with browse button
+		if param.IsDirectoryMode && r.URL.Path == "/" && param.ReadmeFile != "" && viewMode == "" {
+			templateParam := TemplateParam{
+				Title:            getTitle(param.ReadmeFile),
+				Body:             mdResponse(w, param.ReadmeFile, param),
+				Host:             r.Host,
+				Reload:           param.Reload,
+				Mode:             param.getMode().String(),
+				ShowBrowseButton: true,
+				IsDirectoryIndex: false,
+				HasReadme:        true,
+				DirectoryName:    filepath.Base(param.DirectoryPath),
+				Files:            nil,
+			}
 
-		err := tmpl.Execute(w, param)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-
+			err := tmpl.Execute(w, templateParam)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
 			return
 		}
+
+		// Handle directory with no README - show index by default
+		if param.IsDirectoryMode && r.URL.Path == "/" && param.ReadmeFile == "" && viewMode == "" {
+			// Generate file list
+			extensions := app.ParseExtensions(param.DirectoryListingExtensions)
+			files, err := app.ListMarkdownFiles(param.DirectoryPath, extensions)
+			if err != nil {
+				http.Error(w, fmt.Sprintf("Error listing files: %v", err), http.StatusInternalServerError)
+				return
+			}
+
+			templateParam := TemplateParam{
+				Title:            "Browse Files",
+				Body:             "",
+				Host:             r.Host,
+				Reload:           param.Reload,
+				Mode:             param.getMode().String(),
+				ShowBrowseButton: false,
+				IsDirectoryIndex: true,
+				HasReadme:        false,
+				DirectoryName:    filepath.Base(param.DirectoryPath),
+				Files:            generateDirectoryIndex(files),
+			}
+
+			err = tmpl.Execute(w, templateParam)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+
+		// Handle .md file requests
+		if strings.HasSuffix(r.URL.Path, ".md") {
+			// Resolve file path relative to directory
+			var filePath string
+			if param.IsDirectoryMode {
+				// Remove leading slash
+				relPath := strings.TrimPrefix(r.URL.Path, "/")
+				filePath = filepath.Join(param.DirectoryPath, relPath)
+			} else {
+				filePath = filename
+			}
+
+			templateParam := TemplateParam{
+				Title:            getTitle(filePath),
+				Body:             mdResponse(w, filePath, param),
+				Host:             r.Host,
+				Reload:           param.Reload,
+				Mode:             param.getMode().String(),
+				ShowBrowseButton: param.IsDirectoryMode,
+				IsDirectoryIndex: false,
+				HasReadme:        param.ReadmeFile != "",
+				DirectoryName:    "",
+				Files:            nil,
+			}
+
+			err := tmpl.Execute(w, templateParam)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+
+		// Handle regular path (/)
+		if r.URL.Path == "/" {
+			templateParam := TemplateParam{
+				Title:  getTitle(filename),
+				Body:   mdResponse(w, filename, param),
+				Host:   r.Host,
+				Reload: param.Reload,
+				Mode:   param.getMode().String(),
+			}
+
+			err := tmpl.Execute(w, templateParam)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+
+		// Serve other files
+		h.ServeHTTP(w, r)
 	})
 }
 
@@ -213,4 +373,22 @@ func getTCPListener(host string, port int) (net.Listener, error) {
 	}
 
 	return listener, nil
+}
+
+// generateDirectoryIndex creates FileInfo slice from file paths
+func generateDirectoryIndex(files []string) []FileInfo {
+	fileInfos := make([]FileInfo, 0, len(files))
+
+	for _, file := range files {
+		// Calculate depth based on number of path separators
+		depth := strings.Count(file, string(filepath.Separator))
+
+		fileInfos = append(fileInfos, FileInfo{
+			Name:  filepath.Base(file),
+			Path:  file,
+			Depth: depth,
+		})
+	}
+
+	return fileInfos
 }

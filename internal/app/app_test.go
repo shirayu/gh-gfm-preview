@@ -40,21 +40,21 @@ func TestTargetFile(t *testing.T) {
 }
 
 func TestFindReadme(t *testing.T) {
-	actual, _ := findReadme("../../")
+	actual, _ := FindReadme("../../")
 	expected := "../../README.md"
 
 	if actual != expected {
 		t.Errorf("got %v\n want %v", actual, expected)
 	}
 
-	actual, _ = findReadme("../../testdata")
+	actual, _ = FindReadme("../../testdata")
 	expected = "../../testdata/README"
 
 	if actual != expected {
 		t.Errorf("got %v\n want %v", actual, expected)
 	}
 
-	_, err := findReadme("../../cmd")
+	_, err := FindReadme("../../cmd")
 	if err == nil {
 		t.Errorf("err is nil")
 	}
