@@ -10,12 +10,13 @@ import (
 func TestDirectoryBrowsingMode(t *testing.T) {
 	testDir := "../../testdata"
 	param := &Param{
-		DirectoryListing:           true,
-		DirectoryListingExtensions: ".md",
-		IsDirectoryMode:            true,
-		DirectoryPath:              testDir,
-		ReadmeFile:                 filepath.Join(testDir, "README"),
-		Reload:                     false,
+		DirectoryListing:               true,
+		DirectoryListingShowExtensions: ".md",
+		DirectoryListingTextExtensions: ".md,.txt,.rst,.adoc,.org",
+		IsDirectoryMode:                true,
+		DirectoryPath:                  testDir,
+		ReadmeFile:                     filepath.Join(testDir, "README"),
+		Reload:                         false,
 	}
 
 	ts := httptest.NewServer(handler("", param, http.FileServer(http.Dir(testDir))))

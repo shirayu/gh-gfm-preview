@@ -19,19 +19,20 @@ type TemplateParam struct {
 }
 
 type Param struct {
-	Filename                   string
-	MarkdownMode               bool
-	Reload                     bool
-	ForceLightMode             bool
-	ForceDarkMode              bool
-	AutoOpen                   bool
-	UseStdin                   bool
-	StdinContent               string
-	DirectoryListing           bool
-	DirectoryListingExtensions string
-	IsDirectoryMode            bool
-	DirectoryPath              string
-	ReadmeFile                 string
+	Filename                       string
+	MarkdownMode                   bool
+	Reload                         bool
+	ForceLightMode                 bool
+	ForceDarkMode                  bool
+	AutoOpen                       bool
+	UseStdin                       bool
+	StdinContent                   string
+	DirectoryListing               bool
+	DirectoryListingShowExtensions string
+	DirectoryListingTextExtensions string
+	IsDirectoryMode                bool
+	DirectoryPath                  string
+	ReadmeFile                     string
 }
 
 type Server struct {
@@ -59,5 +60,6 @@ type FileTreeItem struct {
 	Name     string
 	Path     string
 	IsDir    bool
+	IsBinary bool
 	Children []FileTreeItem
 }

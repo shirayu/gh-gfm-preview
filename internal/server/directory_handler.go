@@ -17,7 +17,8 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 	urlPath := strings.TrimPrefix(r.URL.Path, "/")
 	urlPath = strings.TrimSuffix(urlPath, "/")
 
-	extensions := app.ParseExtensions(param.DirectoryListingExtensions)
+	extensions := app.ParseExtensions(param.DirectoryListingShowExtensions)
+	textExtensions := app.ParseExtensions(param.DirectoryListingTextExtensions)
 
 	// Determine the actual filesystem path
 	var currentDir string
@@ -65,6 +66,14 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 			return
 		}
 
+		// Check if file is a text file - if not, let browser handle it natively
+		if !app.IsTextFile(currentDir, textExtensions) {
+			// Serve file directly using http.ServeFile (binary file)
+			http.ServeFile(w, r, currentDir)
+			return
+		}
+
+		// Text file - render with markdown template
 		templateParam := TemplateParam{
 			Title:            getTitle(currentDir),
 			Body:             mdResponse(w, currentDir, param),
@@ -186,6 +195,7 @@ func generateFileTree(files []string, dirs []string, currentPath string) []FileT
 			Name:     dir,
 			Path:     dirPath,
 			IsDir:    true,
+			IsBinary: false,
 			Children: nil,
 		})
 	}
@@ -197,9 +207,10 @@ func generateFileTree(files []string, dirs []string, currentPath string) []FileT
 			filePath = file
 		}
 		items = append(items, FileTreeItem{
-			Name:  file,
-			Path:  filePath,
-			IsDir: false,
+			Name:     file,
+			Path:     filePath,
+			IsDir:    false,
+			IsBinary: false, // Will be determined in template if needed
 		})
 	}
 

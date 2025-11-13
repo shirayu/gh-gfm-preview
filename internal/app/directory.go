@@ -152,3 +152,15 @@ func HasAllowedExtension(filePath string, extensions []string) bool {
 	}
 	return false
 }
+
+// IsTextFile checks if a file is a text file based on allowed extensions (whitelist)
+// Returns true if the file extension is in the allowed list
+func IsTextFile(filePath string, textExtensions []string) bool {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	for _, textExt := range textExtensions {
+		if ext == textExt {
+			return true
+		}
+	}
+	return false
+}
