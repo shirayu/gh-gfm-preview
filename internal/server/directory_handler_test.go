@@ -12,7 +12,7 @@ func TestDirectoryBrowsingMode(t *testing.T) {
 	param := &Param{
 		DirectoryListing:               true,
 		DirectoryListingShowExtensions: ".md",
-		DirectoryListingTextExtensions: ".md,.txt,.rst,.adoc,.org",
+		DirectoryListingTextExtensions: ".md,.txt",
 		IsDirectoryMode:                true,
 		DirectoryPath:                  testDir,
 		ReadmeFile:                     filepath.Join(testDir, "README"),
