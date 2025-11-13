@@ -87,7 +87,16 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 			ParentPath:       getParentPath(currentURLPath),
 		}
 
-		err := tmpl.Execute(w, templateParam)
+		// Generate file tree for browse files popover (show files in the same directory)
+		fileDir := filepath.Dir(currentDir)
+		files, dirs, err := app.ListDirectoryContents(fileDir, extensions)
+		if err == nil {
+			// Use the directory path (parent of the file) for file tree
+			dirURLPath := getParentPath(currentURLPath)
+			templateParam.FileTree = generateFileTree(files, dirs, dirURLPath)
+		}
+
+		err = tmpl.Execute(w, templateParam)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -183,7 +192,19 @@ func generateDirectoryIndex(files []string) []FileInfo {
 
 // generateFileTree creates FileTreeItem slice from files and directories
 func generateFileTree(files []string, dirs []string, currentPath string) []FileTreeItem {
-	items := make([]FileTreeItem, 0, len(dirs)+len(files))
+	items := make([]FileTreeItem, 0, len(dirs)+len(files)+1)
+
+	// Add parent directory link (..) if not at root
+	if currentPath != "" && currentPath != "." {
+		parentPath := getParentPath(currentPath)
+		items = append(items, FileTreeItem{
+			Name:     "..",
+			Path:     parentPath,
+			IsDir:    true,
+			IsBinary: false,
+			Children: nil,
+		})
+	}
 
 	// Add directories first
 	for _, dir := range dirs {

@@ -75,6 +75,7 @@ func TestGenerateFileTree(t *testing.T) {
 			dirs:        []string{"subdir"},
 			currentPath: "parent",
 			want: []FileTreeItem{
+				{Name: "..", Path: "", IsDir: true},
 				{Name: "subdir", Path: "parent/subdir", IsDir: true},
 				{Name: "file.md", Path: "parent/file.md", IsDir: false},
 			},
@@ -85,7 +86,19 @@ func TestGenerateFileTree(t *testing.T) {
 			dirs:        []string{"BB"},
 			currentPath: "AA",
 			want: []FileTreeItem{
+				{Name: "..", Path: "", IsDir: true},
 				{Name: "BB", Path: "AA/BB", IsDir: true},
+			},
+		},
+		{
+			name:        "Deeply nested subdirectory",
+			files:       []string{"file.md"},
+			dirs:        []string{"CC"},
+			currentPath: "AA/BB",
+			want: []FileTreeItem{
+				{Name: "..", Path: "AA", IsDir: true},
+				{Name: "CC", Path: "AA/BB/CC", IsDir: true},
+				{Name: "file.md", Path: "AA/BB/file.md", IsDir: false},
 			},
 		},
 	}
