@@ -37,7 +37,7 @@ func init() {
 	rootCmd.Flags().BoolP("light-mode", "", false, "force light mode")
 	rootCmd.Flags().BoolP("dark-mode", "", false, "force dark mode")
 	rootCmd.Flags().BoolP("directory-listing", "", false, "enable directory browsing mode")
-	rootCmd.Flags().StringP("directory-listing-extensions", "", ".md", "file extensions to show in directory listing (comma-separated)")
+	rootCmd.Flags().StringP("directory-listing-extensions", "", ".md", "file extensions to show in directory listing (comma-separated, use '*' for all files)")
 }
 
 func detectStdin(filename string) (bool, string) {
