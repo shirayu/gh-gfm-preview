@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"net"
 	"net/http"
 	"os"
@@ -88,9 +89,15 @@ func (server *Server) Serve(param *Param) error {
 		dir = "."
 	}
 
+	// Get the static subdirectory from embed.FS
+	staticFS, err := fs.Sub(staticDir, "static")
+	if err != nil {
+		return fmt.Errorf("failed to get static subdirectory: %w", err)
+	}
+
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/", wrapHandler(handler(filename, param, http.FileServer(http.Dir(dir)))))
-	serveMux.Handle("/static/", wrapHandler(handler(filename, param, http.FileServer(http.FS(staticDir)))))
+	serveMux.Handle("/static/", wrapHandler(http.StripPrefix("/static/", http.FileServer(http.FS(staticFS)))))
 	serveMux.Handle("/__/md", wrapHandler(mdHandler(filename, param)))
 
 	watcher, err := createWatcher(dir)
