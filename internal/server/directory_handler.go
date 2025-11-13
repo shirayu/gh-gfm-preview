@@ -123,6 +123,12 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 			return
 		}
 
+		// Determine directory title - use "Home" for root directory
+		dirTitle := filepath.Base(currentURLPath)
+		if currentURLPath == "" || dirTitle == "." {
+			dirTitle = "Home"
+		}
+
 		templateParam := TemplateParam{
 			Title:            "Browse Files",
 			Body:             "",
@@ -132,11 +138,11 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 			ShowBrowseButton: false,
 			IsDirectoryIndex: true,
 			HasReadme:        readmeErr == nil,
-			DirectoryTitle:   filepath.Base(currentURLPath),
+			DirectoryTitle:   dirTitle,
 			FileTree:         generateFileTree(files, dirs, currentURLPath),
 			CurrentPath:      currentURLPath,
 			ParentPath:       getParentPath(currentURLPath),
-			BreadcrumbItems:  generateBreadcrumbItems(getParentPath(currentURLPath), filepath.Base(currentURLPath), true),
+			BreadcrumbItems:  generateBreadcrumbItems(getParentPath(currentURLPath), dirTitle, true),
 		}
 
 		err = tmpl.Execute(w, templateParam)
