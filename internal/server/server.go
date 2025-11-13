@@ -178,9 +178,25 @@ func handler(filename string, param *Param, h http.Handler) http.Handler {
 		}
 
 		// Security check: ensure currentDir is within param.DirectoryPath
-		absBase, _ := filepath.Abs(param.DirectoryPath)
-		absCurrent, _ := filepath.Abs(currentDir)
-		if !strings.HasPrefix(absCurrent, absBase) {
+		absBase, err := filepath.Abs(param.DirectoryPath)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		absCurrent, err := filepath.Abs(currentDir)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		// Ensure absBase ends with separator for proper prefix checking
+		if !strings.HasSuffix(absBase, string(filepath.Separator)) {
+			absBase += string(filepath.Separator)
+		}
+
+		// Check if current path is within base directory
+		if absCurrent != strings.TrimSuffix(absBase, string(filepath.Separator)) && !strings.HasPrefix(absCurrent+string(filepath.Separator), absBase) {
+			utils.LogDebugf("Path traversal attempt: base=%s, current=%s", absBase, absCurrent)
 			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}

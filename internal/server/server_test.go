@@ -97,3 +97,43 @@ func TestWrapHandler(t *testing.T) {
 		t.Errorf("server status error, got: %v", res.StatusCode)
 	}
 }
+
+func TestDirectoryBrowsingMode(t *testing.T) {
+	testDir := "../../testdata"
+	param := &Param{
+		DirectoryListing:           true,
+		DirectoryListingExtensions: ".md",
+		IsDirectoryMode:            true,
+		DirectoryPath:              testDir,
+		ReadmeFile:                 filepath.Join(testDir, "README"),
+		Reload:                     false,
+	}
+
+	ts := httptest.NewServer(handler("", param, http.FileServer(http.Dir(testDir))))
+	defer ts.Close()
+
+	tests := []struct {
+		name       string
+		path       string
+		wantStatus int
+	}{
+		{"Root README", "/", http.StatusOK},
+		{"Markdown file", "/markdown-demo.md", http.StatusOK},
+		{"Non-existent file", "/does-not-exist.md", http.StatusNotFound},
+		{"Directory listing", "/?view=index", http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			res, err := http.Get(ts.URL + tt.path)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			defer res.Body.Close()
+
+			if res.StatusCode != tt.wantStatus {
+				t.Errorf("status code error for %s: got %v, want %v", tt.path, res.StatusCode, tt.wantStatus)
+			}
+		})
+	}
+}
