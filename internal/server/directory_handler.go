@@ -123,7 +123,6 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 			return
 		}
 
-
 		templateParam := TemplateParam{
 			Title:            "Browse Files",
 			Body:             "",
