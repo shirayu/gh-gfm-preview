@@ -16,6 +16,7 @@ type TemplateParam struct {
 	FileTree         []FileTreeItem
 	CurrentPath      string
 	ParentPath       string
+	BreadcrumbItems  []BreadcrumbItem
 }
 
 type Param struct {
@@ -62,4 +63,9 @@ type FileTreeItem struct {
 	IsDir    bool
 	IsBinary bool
 	Children []FileTreeItem
+}
+
+type BreadcrumbItem struct {
+	Name string
+	Path string
 }

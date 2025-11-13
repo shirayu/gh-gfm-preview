@@ -619,12 +619,12 @@
     <div class="breadcrumb-container">
       <nav class="breadcrumb">
         <a href="/">Home</a>
-        {{if .CurrentPath}}
+        {{range .BreadcrumbItems}}
         <span class="separator">›</span>
-        {{if .ParentPath}}
-        <a href="/{{.ParentPath}}/">{{.ParentPath}}</a>
-        <span class="separator">›</span>
+        <a href="/{{.Path}}/">{{.Name}}</a>
         {{end}}
+        {{if .DirectoryName}}
+        <span class="separator">›</span>
         <span class="current">{{.DirectoryName}}</span>
         {{end}}
       </nav>

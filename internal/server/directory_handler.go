@@ -85,6 +85,7 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 			HasReadme:        false,
 			CurrentPath:      currentURLPath,
 			ParentPath:       getParentPath(currentURLPath),
+			BreadcrumbItems:  generateBreadcrumbItems(currentURLPath),
 		}
 
 		// Generate file tree for browse files popover (show files in the same directory)
@@ -122,6 +123,11 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 			return
 		}
 
+		dirName := filepath.Base(currentDir)
+		if currentURLPath == "" || dirName == "." {
+			dirName = ""
+		}
+
 		templateParam := TemplateParam{
 			Title:            "Browse Files",
 			Body:             "",
@@ -131,10 +137,11 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 			ShowBrowseButton: false,
 			IsDirectoryIndex: true,
 			HasReadme:        readmeErr == nil,
-			DirectoryName:    filepath.Base(currentDir),
+			DirectoryName:    dirName,
 			FileTree:         generateFileTree(files, dirs, currentURLPath),
 			CurrentPath:      currentURLPath,
 			ParentPath:       getParentPath(currentURLPath),
+			BreadcrumbItems:  generateBreadcrumbItems(currentURLPath),
 		}
 
 		err = tmpl.Execute(w, templateParam)
@@ -157,6 +164,7 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 		HasReadme:        true,
 		CurrentPath:      currentURLPath,
 		ParentPath:       getParentPath(currentURLPath),
+		BreadcrumbItems:  generateBreadcrumbItems(currentURLPath),
 	}
 
 	// Generate file tree for popover
@@ -248,4 +256,41 @@ func getParentPath(currentPath string) string {
 		return ""
 	}
 	return parent
+}
+
+// generateBreadcrumbItems creates breadcrumb items from current path
+// Returns parent directories only (not including the current directory)
+func generateBreadcrumbItems(currentPath string) []BreadcrumbItem {
+	if currentPath == "" || currentPath == "." {
+		return []BreadcrumbItem{}
+	}
+
+	parts := strings.Split(currentPath, string(filepath.Separator))
+	// Exclude the last part (current directory)
+	if len(parts) == 0 {
+		return []BreadcrumbItem{}
+	}
+
+	items := make([]BreadcrumbItem, 0, len(parts)-1)
+
+	currentBuildPath := ""
+	for i, part := range parts {
+		if part == "" {
+			continue
+		}
+		if currentBuildPath == "" {
+			currentBuildPath = part
+		} else {
+			currentBuildPath = filepath.Join(currentBuildPath, part)
+		}
+		// Don't include the last element
+		if i < len(parts)-1 {
+			items = append(items, BreadcrumbItem{
+				Name: part,
+				Path: currentBuildPath,
+			})
+		}
+	}
+
+	return items
 }
