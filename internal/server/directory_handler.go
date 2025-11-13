@@ -176,24 +176,6 @@ func handleDirectoryMode(w http.ResponseWriter, r *http.Request, param *Param) {
 	}
 }
 
-// generateDirectoryIndex creates FileInfo slice from file paths
-func generateDirectoryIndex(files []string) []FileInfo {
-	fileInfos := make([]FileInfo, 0, len(files))
-
-	for _, file := range files {
-		// Calculate depth based on number of path separators
-		depth := strings.Count(file, string(filepath.Separator))
-
-		fileInfos = append(fileInfos, FileInfo{
-			Name:  filepath.Base(file),
-			Path:  file,
-			Depth: depth,
-		})
-	}
-
-	return fileInfos
-}
-
 // generateFileTree creates FileTreeItem slice from files and directories
 func generateFileTree(files []string, dirs []string, currentPath string) []FileTreeItem {
 	items := make([]FileTreeItem, 0, len(dirs)+len(files)+1)
